@@ -17,7 +17,7 @@ cd "$INSTALL_DIR"
 git checkout "$QEMU_VERSION"
 
 
-git apply "$REPO_DIR/patches/exp1_fake_capacity_only.diff"
+git apply "$REPO_DIR/patches/exp1_fake_capacity_FS.diff"
 
 mkdir -p build
 cd build
