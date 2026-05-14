@@ -43,57 +43,53 @@ nvme-malicious-qemu/
 ├── docs/
 └── results/
 ```
-## Installation
+## Install patched QEMU
 
-### Prerequisites
-* 
-* 
-
-### Steps
-
-1. **Clone the repository**
-   ```bash
-   git clone [https://github.com](https://github.com/hsiaoyin-peng/nvme-malicious-qemu.git)
-   cd nvme-malicious-qemu
-   ```
-2. **Install patched QEMU**
-   ```bash
-   chmod +x scripts/install_qemu.sh
-   ./scripts/install_qemu.sh
-   ```
-   This script downloads QEMU stable-8.2, applies the NVMe experiment patches, and builds the patched QEMU binary.
-   The patched QEMU binary will be located at:
-   ```bash
-   ~/qemu-nvme-malicious/build/qemu-system-aarch64
-   ```
-3. **Prepare Alpine Linux and disk images**
-   ```bash
-   chmod +x scripts/prepare_alpine.sh
-   ./scripts/prepare_alpine.sh
-   ```
-   This script downloads the Alpine Linux aarch64 ISO and creates:
-   ```bash
-   images/alpine.qcow2
-   images/nvme.img
-   ```
-4. **Start the Alpine VM**
-   After Alpine boots, login as root and run:
-   ```bash
-   apk update
-   apk add --no-cache python3 py3-pip fio nvme-cli e2fsprogs util-linux bash coreutils
-   ```
-   Or copy and run:
-   ```bash
-   sh scripts/guest_setup.sh
-   ```
-   Required guest tools:
-   |Tool|Purpose|
-   |----------|-----------------|
-   | `nvme-cli`   | Inspect NVMe namespace and controller information    |
-   | `fio`        | Generate storage workloads                           |
-   | `python3`    | Run detection or validation scripts                  |
-   | `e2fsprogs`  | Create and check ext4 filesystems                    |
-   | `util-linux` | Provides tools such as `lsblk`, `mount`, and `fdisk` |
+**Clone the repository**
+```bash
+git clone [https://github.com](https://github.com/hsiaoyin-peng/nvme-malicious-qemu.git)
+cd nvme-malicious-qemu
+```
+**Install patched QEMU**
+```bash
+chmod +x scripts/install_qemu.sh
+./scripts/install_qemu.sh
+```
+This script downloads QEMU stable-8.2, applies the NVMe experiment patches, and builds the patched QEMU binary.
+The patched QEMU binary will be located at:
+```bash
+~/qemu-nvme-malicious/build/qemu-system-aarch64
+```
+## Prepare Alpine environment
+**Prepare Alpine Linux and disk images**
+```bash
+chmod +x scripts/prepare_alpine.sh
+./scripts/prepare_alpine.sh
+```
+This script downloads the Alpine Linux aarch64 ISO and creates:
+```bash
+images/alpine.qcow2
+images/nvme.img
+```
+Boot VM and install guest tools
+**Start the Alpine VM**
+After Alpine boots, login as root and run:
+```bash
+apk update
+apk add --no-cache python3 py3-pip fio nvme-cli e2fsprogs util-linux bash coreutils
+```
+Or copy and run:
+```bash
+sh scripts/guest_setup.sh
+```
+Required guest tools:
+|Tool|Purpose|
+|----------|-----------------|
+| `nvme-cli`   | Inspect NVMe namespace and controller information    |
+| `fio`        | Generate storage workloads                           |
+| `python3`    | Run detection or validation scripts                  |
+| `e2fsprogs`  | Create and check ext4 filesystems                    |
+| `util-linux` | Provides tools such as `lsblk`, `mount`, and `fdisk` |
 
 ## Basic Test Commands
 Inside the Alpine guest:
