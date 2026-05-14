@@ -1,0 +1,139 @@
+diff --git a/hw/nvme/ctrl.c b/hw/nvme/ctrl.c
+index 4c400aa005..46007ad843 100644
+--- a/hw/nvme/ctrl.c
++++ b/hw/nvme/ctrl.c
+@@ -1674,6 +1674,28 @@ static inline uint16_t nvme_check_mdts(NvmeCtrl *n, size_t len)
+     return NVME_SUCCESS;
+ }
+ 
++static bool mal_nvme_check_bounds(uint8_t cmd, NvmeNamespace *ns,
++        uint64_t slba, uint32_t nlb)
++{
++    uint64_t end_lba;
++    uint64_t max_lba;
++
++    if (slba > UINT64_MAX - nlb) {
++        return NVME_LBA_RANGE | NVME_DNR;
++    }
++    end_lba = slba + nlb;
++    max_lba = ns->size / ns->lbasz;
++
++    if (end_lba > max_lba)
++    {
++        //fprintf(stderr,
++        //        "[mal-nvme][CMD] op=%u reject/access slba=%" PRIu64 " nlb=%u end=%" PRIu64 " real_nsize=%" PRIu64 " lbasz=%zu max_lba=%" PRIu64 "\n", cmd, slba, nlb, end_lba, ns->size, ns->lbasz, max_lba);
++        return NVME_SUCCESS;
++    }
++
++    return NVME_LBA_RANGE | NVME_DNR;
++}
++
+ static inline uint16_t nvme_check_bounds(NvmeNamespace *ns, uint64_t slba,
+                                          uint32_t nlb)
+ {
+@@ -2585,6 +2607,11 @@ next:
+         goto next;
+     }
+ 
++    // add by yin
++    if (!mal_nvme_check_bounds(9 , ns, slba, nlb)) {
++        goto next;
++    }
++
+     if (nvme_check_bounds(ns, slba, nlb)) {
+         trace_pci_nvme_err_invalid_lba_range(slba, nlb,
+                                              ns->id_ns.nsze);
+@@ -3437,6 +3464,12 @@ static uint16_t nvme_read(NvmeCtrl *n, NvmeRequest *req)
+         goto invalid;
+     }
+ 
++    // add by yin
++    status = mal_nvme_check_bounds(2 , ns, slba, nlb);
++    if (!status) {
++        return status;
++    }
++
+     status = nvme_check_bounds(ns, slba, nlb);
+     if (status) {
+         goto invalid;
+@@ -3552,6 +3585,12 @@ static uint16_t nvme_do_write(NvmeCtrl *n, NvmeRequest *req, bool append,
+         }
+     }
+ 
++    // add by yin
++    status = mal_nvme_check_bounds(1, ns, slba, nlb);
++    if (!status) {
++        return status;
++    }
++
+     status = nvme_check_bounds(ns, slba, nlb);
+     if (status) {
+         goto invalid;
+@@ -5397,6 +5436,22 @@ static uint16_t nvme_identify_ctrl_csi(NvmeCtrl *n, NvmeRequest *req)
+     return nvme_c2h(n, id, sizeof(id), req);
+ }
+ 
++static void my_fake_ns_capacity(NvmeNamespace *ns, NvmeIdNs *id_ns)
++{
++    if (!ns->fake_size_enable) {
++        return;
++    }
++
++    if (ns->fake_nsze) {
++        id_ns->nsze = cpu_to_le64(ns->fake_nsze);
++    }
++    if (ns->fake_ncap) {
++        id_ns->ncap = cpu_to_le64(ns->fake_ncap);
++    }
++
++    id_ns->nuse = cpu_to_le64(ns->fake_nuse);
++}
++
+ static uint16_t nvme_identify_ns(NvmeCtrl *n, NvmeRequest *req, bool active)
+ {
+     NvmeNamespace *ns;
+@@ -5422,6 +5477,10 @@ static uint16_t nvme_identify_ns(NvmeCtrl *n, NvmeRequest *req, bool active)
+     }
+ 
+     if (active || ns->csi == NVME_CSI_NVM) {
++        // start: malform nvme
++        NvmeIdNs *id_ns = &ns->id_ns;
++        my_fake_ns_capacity(ns, id_ns);
++        // end: malform nvme
+         return nvme_c2h(n, (uint8_t *)&ns->id_ns, sizeof(NvmeIdNs), req);
+     }
+ 
+diff --git a/hw/nvme/ns.c b/hw/nvme/ns.c
+index 0eabcf5cf5..039e945360 100644
+--- a/hw/nvme/ns.c
++++ b/hw/nvme/ns.c
+@@ -825,6 +825,12 @@ static Property nvme_ns_props[] = {
+     DEFINE_PROP_BOOL("eui64-default", NvmeNamespace, params.eui64_default,
+                      false),
+     DEFINE_PROP_STRING("fdp.ruhs", NvmeNamespace, params.fdp.ruhs),
++    // start: malform nvme
++    DEFINE_PROP_BOOL("fake-size-enable", NvmeNamespace, fake_size_enable, false),
++    DEFINE_PROP_UINT64("fake-nsze", NvmeNamespace, fake_nsze, 0),
++    DEFINE_PROP_UINT64("fake-ncap", NvmeNamespace, fake_ncap, 0),
++    DEFINE_PROP_UINT64("fake-nuse", NvmeNamespace, fake_nuse, 0),
++    // end: malform nvme
+     DEFINE_PROP_END_OF_LIST(),
+ };
+ 
+diff --git a/hw/nvme/nvme.h b/hw/nvme/nvme.h
+index eccf14acc9..d554632058 100644
+--- a/hw/nvme/nvme.h
++++ b/hw/nvme/nvme.h
+@@ -258,6 +258,12 @@ typedef struct NvmeNamespace {
+         /* reclaim unit handle identifiers indexed by placement handle */
+         uint16_t *phs;
+     } fdp;
++    // start: malform nvme
++    bool fake_size_enable;
++    uint64_t fake_nsze;
++    uint64_t fake_ncap;
++    uint64_t fake_nuse;
++    // end: malform nvme
+ } NvmeNamespace;
+ 
+ static inline uint32_t nvme_nsid(NvmeNamespace *ns)

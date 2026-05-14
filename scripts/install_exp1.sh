@@ -15,7 +15,8 @@ cd "$INSTALL_DIR"
 
 git checkout "$QEMU_VERSION"
 
-git apply /path/to/your/repo/patches/exp1_fake_larger_capacity.patch
+
+git apply "$REPO_DIR/patches/exp1_fake_larger_capacity.patch"
 
 mkdir -p build
 cd build
@@ -23,5 +24,5 @@ cd build
 ../configure --target-list=aarch64-softmmu
 make -j"$(nproc)"
 
-echo "Installed patched QEMU at:"
+echo "[OK] Patched QEMU installed:"
 echo "$INSTALL_DIR/build/qemu-system-aarch64"
