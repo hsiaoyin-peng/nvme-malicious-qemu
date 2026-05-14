@@ -42,7 +42,7 @@ nvme-malicious-qemu/
 ├── images/
 ├── docs/
 └── results/
-
+```
 ## Installation
 
 ### Prerequisites
