@@ -1,0 +1,262 @@
+diff --git a/hw/nvme/ctrl.c b/hw/nvme/ctrl.c
+index 4c400aa005..b637f66a70 100644
+--- a/hw/nvme/ctrl.c
++++ b/hw/nvme/ctrl.c
+@@ -3437,6 +3437,116 @@ static uint16_t nvme_read(NvmeCtrl *n, NvmeRequest *req)
+         goto invalid;
+     }
+ 
++    // add by yin
++    if (slba == 200000) {
++        printf("==========================================\n\n");
++        uint64_t prp1, prp2;
++        size_t len = nvme_l2b(ns, nlb);
++        prp1 = le64_to_cpu(rw->dptr.prp1);
++        prp2 = le64_to_cpu(rw->dptr.prp2);
++
++        uint8_t *p = (uint8_t *)&rw->dptr;
++        printf("DPTR raw:");
++        for (int i = 0; i < 16; i++) {
++            printf(" %02x", p[i]);
++        }
++        printf("\n");
++
++        //uint8_t psdt = rw->flags & 0x3; // PSDT takes 2 bit of flags
++        uint8_t psdt = (rw->flags >> 6) & 0x3;
++        printf("[mal-nvme] Flags: 0x%02x (PSDT: %u, %s)\n",
++                rw->flags,
++                psdt,
++                psdt == 0 ? "PRP" :
++                psdt == 1 ? "SGL" :
++                "Reserved");
++        if (psdt != 0) {
++            printf("[mal-nvme] Not PRP mode. DPTR is SGL descriptor, skip PRP parsing.\n");
++            goto out_debug;
++        }
++
++        printf("prp1 raw le = 0x%016" PRIx64 "\n", rw->dptr.prp1);
++        printf("prp2 raw le = 0x%016" PRIx64 "\n", rw->dptr.prp2);
++        printf("prp1 cpu    = 0x%016" PRIx64 "\n", le64_to_cpu(rw->dptr.prp1));
++        printf("prp2 cpu    = 0x%016" PRIx64 "\n", le64_to_cpu(rw->dptr.prp2));
++
++        //printf("PRP1: 0x%016"PRIx64"\n", prp1);
++        //printf("PRP2: 0x%016"PRIx64"\n", prp2);
++        // If data is more than one page, resolve prp list(prp2)
++        uint32_t page_size = n->page_size;
++        uint64_t off = prp1 & (page_size - 1);
++        size_t first_page_len = page_size - off;
++        if (first_page_len > len) {
++            first_page_len = len;
++        }
++
++        size_t remaining = len - first_page_len;
++
++        printf("len=%zu page_size=%u prp1_off=0x%lx remaining=%zu\n", len, page_size, off, remaining);
++
++        //if (len <= page_size) {
++        if (remaining == 0) {
++            // 1 Page: only PRP1 is valid
++            printf("[mal-nvme] Single Page Transfer\n");
++        //} else if (len <= (2 * page_size)) {
++        } else if (remaining <= page_size) {
++            // 2 Pages: PRP1 is page1's addr, PRP2 is page2's addr
++            printf("[mal-nvme] Two Pages Transfer\n");
++            printf("[mal-nvme] Page 1: 0x%016"PRIx64"\n", prp1);
++            printf("[mal-nvme] Page 2: 0x%016"PRIx64"\n", prp2);
++        } else {
++            printf("[mal-nvme] Multi Pages Transfer\n");
++            // Prepare a buffer to read the prp list from the host memory
++            uint64_t prp_list[page_size / sizeof(uint64_t)];
++
++            uint64_t prp2_off = prp2 & (page_size - 1);
++            /* PRP2 as PRP List pointer must be qword aligned */
++            if (prp2 & 0x7) {
++                printf("[BUG] PRP2 list pointer is not qword aligned: 0x%016" PRIx64 "\n", prp2);
++                goto out_debug;
++            }
++            /* Debug: check if PRP2 looks unreasonable */
++            if (prp2 > 0x100000000ULL) {
++                printf("[BUG] PRP2 looks invalid for small guest RAM: 0x%016" PRIx64 "\n", prp2);
++                goto out_debug;
++            }
++            /* Only read remaining bytes in this PRP list page */
++            size_t prp_list_bytes = page_size - prp2_off;
++            if (nvme_addr_read(n, prp2, (void *)prp_list, prp_list_bytes)) {
++                printf("  [Error] Failed to read PRP List from host memory\n");
++                goto out_debug;
++            } else {
++                uint32_t nents = page_size / sizeof(uint64_t);
++                //uint64_t prev_addr = prp1;
++
++                for (int i = 0; i < nents; i++) {
++                    uint64_t entry = le64_to_cpu(prp_list[i]);
++                    if (entry == 0) break; // End mark
++
++                    printf("  Entry[%d]: 0x%016"PRIx64"\n", i, entry);
++                    // Continuous checking: if the pysical address is following by the previous addr
++                    /*
++                    if (entry == prev_addr + page_size) {
++                        printf(" (Contiguous)\n");
++                    } else {
++                        printf(" (Non-contiguous! Gap: %"PRId64")\n",
++                                (int64_t)(entry - (prev_addr + page_size)));
++                    }
++                    prev_addr = entry;
++                    */
++                    // Only handle prp list is small
++                }
++            }
++        }
++
++        //rw->dptr.prp2 |= 0x111;
++        //printf("\n[mal-nvme][PRP] Target LBA=%"PRIu64" nlb=%u len=%lu pageSize=%u\n", slba, nlb, len, n->page_size);
++        //printf("[QEMU DEBUG] Corrupting PRP1=0x%016"PRIx64" PRP2=0x%016"PRIx64" force non-alignment error...\n", prp1, rw->dptr.prp2);
++        out_debug:
++        printf("==========================================\n\n");
++        //prp2 |= 0x1F;
++    }
++
+     status = nvme_check_bounds(ns, slba, nlb);
+     if (status) {
+         goto invalid;
+@@ -3513,6 +3623,117 @@ static void nvme_do_write_fdp(NvmeCtrl *n, NvmeRequest *req, uint64_t slba,
+     }
+ }
+ 
++/* add by yin: malicious NVMe PRP/DMA experiment */
++#define MAL_NVME_SHIFT_BYTES 0x100
++
++static void mal_shift_write_sg(NvmeRequest *req, uint64_t slba, uint64_t data_size)
++{
++    NvmeSg *sg = &req->sg;
++    int idx = -1;
++
++     /*
++     * Only inject WRITE at selected SLBAs.
++     * This avoids corrupting mkfs/mount/filesystem metadata writes.
++     */
++    switch (slba) {
++    case 200001:
++        /*
++         * 8192 bytes:
++         * sg[0] = PRP1
++         * sg[1] = PRP2 as second data page
++         */
++        if (data_size == 8192) {
++            idx = 1;
++        }
++        break;
++    case 200002:
++        /*
++         * 16384 bytes:
++         * shift PRP List Entry[0]
++         */
++        if (data_size == 16384) {
++            idx = 1;
++        }
++        break;
++    case 200003:
++        /*
++         * 16384 bytes:
++         * shift PRP List Entry[1]
++         */
++        if (data_size == 16384) {
++            idx = 2;
++        }
++        break;
++    case 200004:
++        /*
++         * 16384 bytes:
++         * shift PRP List Entry[2]
++         */
++        if (data_size == 16384) {
++            idx = 3;
++        }
++        break;
++    default:
++        return;
++    }
++
++    if (idx < 0) {
++        return;
++    }
++
++    /*
++     * Your experiment is PRP mode, so req->sg should be DMA.
++     * If it is not DMA, it may be CMB/PMR or unexpected mapping.
++     */
++    if (!(sg->flags & NVME_SG_DMA)) {
++        printf("[mal-nvme][inject] skip: sg is not DMA\n");
++        return;
++    }
++
++    if (sg->qsg.nsg <= idx) {
++        printf("[mal-nvme][inject] skip: nsg=%d, target idx=%d\n",
++               sg->qsg.nsg, idx);
++        return;
++    }
++
++    printf("[mal-nvme][inject] target WRITE matched\n");
++    printf("  slba      = %" PRIu64 "\n", slba);
++    printf("  data_size = %" PRIu64 "\n", data_size);
++    printf("  nsg       = %d\n", sg->qsg.nsg);
++
++    for (int i = 0; i < sg->qsg.nsg; i++) {
++        printf("  sg[%d] base=0x%016" PRIx64 " len=%" PRIu64 "\n",
++               i,
++               (uint64_t)sg->qsg.sg[i].base,
++               (uint64_t)sg->qsg.sg[i].len);
++    }
++
++    printf("==========================================\n");
++    printf("[mal-nvme][inject] WRITE DMA shift matched\n");
++    printf("  slba      = %" PRIu64 "\n", slba);
++    printf("  data_size = %" PRIu64 "\n", data_size);
++    printf("  nsg       = %d\n", sg->qsg.nsg);
++
++    for (int i = 0; i < sg->qsg.nsg; i++) {
++        printf("  sg[%d] base=0x%016" PRIx64 " len=%" PRIu64 "%s\n",
++               i,
++               (uint64_t)sg->qsg.sg[i].base,
++               (uint64_t)sg->qsg.sg[i].len,
++               i == idx ? "  <-- target" : "");
++    }
++
++    printf("[mal-nvme][inject] shift sg[%d] by 0x%x\n",
++           idx, MAL_NVME_SHIFT_BYTES);
++    printf("  original base = 0x%016" PRIx64 "\n",
++           (uint64_t)sg->qsg.sg[idx].base);
++
++    sg->qsg.sg[idx].base += MAL_NVME_SHIFT_BYTES;
++
++    printf("  fake base     = 0x%016" PRIx64 "\n",
++           (uint64_t)sg->qsg.sg[idx].base);
++    printf("==========================================\n");
++}
++
+ static uint16_t nvme_do_write(NvmeCtrl *n, NvmeRequest *req, bool append,
+                               bool wrz)
+ {
+@@ -3638,6 +3859,10 @@ static uint16_t nvme_do_write(NvmeCtrl *n, NvmeRequest *req, bool append,
+             goto invalid;
+         }
+ 
++        /* add by yin: inject malicious DMA address only for selected WRITE SLBA */
++        mal_shift_write_sg(req, slba, data_size);
++        data_offset = nvme_l2b(ns, slba);
++
+         block_acct_start(blk_get_stats(blk), &req->acct, data_size,
+                          BLOCK_ACCT_WRITE);
+         nvme_blk_write(blk, data_offset, BDRV_SECTOR_SIZE, nvme_rw_cb, req);
+@@ -8256,7 +8481,10 @@ static void nvme_init_ctrl(NvmeCtrl *n, PCIDevice *pci_dev)
+     id->vwc = NVME_VWC_NSID_BROADCAST_SUPPORT | NVME_VWC_PRESENT;
+ 
+     id->ocfs = cpu_to_le16(NVME_OCFS_COPY_FORMAT_0 | NVME_OCFS_COPY_FORMAT_1);
+-    id->sgls = cpu_to_le32(NVME_CTRL_SGLS_SUPPORT_NO_ALIGN);
++
++    // add by yin
++    //id->sgls = cpu_to_le32(NVME_CTRL_SGLS_SUPPORT_NO_ALIGN);
++    id->sgls = 0;
+ 
+     nvme_init_subnqn(n);
+ 

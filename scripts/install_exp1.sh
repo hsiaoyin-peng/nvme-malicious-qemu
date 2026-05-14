@@ -18,6 +18,7 @@ git checkout "$QEMU_VERSION"
 
 
 git apply "$REPO_DIR/patches/exp1_fake_capacity_FS.diff"
+git apply "$REPO_DIR/patches/exp2_prp_write.diff"
 
 mkdir -p build
 cd build
