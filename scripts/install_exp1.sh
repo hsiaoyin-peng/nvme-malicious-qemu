@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
+REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 QEMU_VERSION="stable-8.2"
 INSTALL_DIR="$HOME/qemu-nvme-exp1"
 
@@ -16,7 +17,7 @@ cd "$INSTALL_DIR"
 git checkout "$QEMU_VERSION"
 
 
-git apply "$REPO_DIR/patches/exp1_fake_larger_capacity.patch"
+git apply "$REPO_DIR/patches/exp1_fake_capacity_only.diff"
 
 mkdir -p build
 cd build
