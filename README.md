@@ -100,7 +100,7 @@ When asked for the installation disk, select:
 ```bash
 vda
 ```
-Use `sys` mode to install Alpine to the virtual disk.
+Use `sys` mode to install Alpine to the virtual disk and choose to erase disk.
 After installation finishes, shut down the VM:
 ```bash
 poweroff
