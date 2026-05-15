@@ -44,14 +44,8 @@ nvme-malicious-qemu/
 │   ├── nvme_attack_detector.py
 │   ├── auto_detection.sh
 │   └── README.md
-├── images/
-│   └── README.md
-├── docs/
-│   ├── experiment-1-fake-capacity.md
-│   └── experiment-2-prp-shift.md
-└── results/
-    ├── exp1/
-    └── exp2/
+└── images/
+    └── README.md
 ```
 ## Install patched QEMU
 
