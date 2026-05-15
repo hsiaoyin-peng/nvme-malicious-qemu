@@ -116,6 +116,23 @@ The guest should contain two main block devices:
 /dev/vda       Alpine system disk
 /dev/nvme0n1   NVMe test device
 ```
+Check the network is connected. If not, setup the dhcp manually.
+```bash
+# Make sure you get the ip address and nic
+ipaddr
+# If not, setup dhcp
+ip link set eth0 up
+udhcpc -i eth0
+# Check the IP address again
+ipaddr
+````
+Download the guest tool in Alpine
+```bash
+wget https://raw.githubusercontent.com/hsiaoyin-peng/nvme-malicious-qemu/main/scripts/guest_setup.sh
+chmod +x guest_setup.sh
+./guest_setup.sh
+```
+Turn the power off and use the run_alpine_disk to run alpine again.
 ## Guest-side Detection Tools
 
 This repository also includes guest-side detection scripts under:
@@ -126,30 +143,19 @@ guest-tools/
 └── auto_detection.sh
 ```
 These scripts should be executed inside the Alpine Linux guest VM.
-
-**Install Guest Dependencies**
-
-Inside Alpine:
+Check the NVMe Test Device
 ```bash
-apk update
-apk add --no-cache \
-  bash python3 py3-pip fio nvme-cli e2fsprogs util-linux \
-  coreutils grep sed gawk bc git wget curl pciutils
+nvme list
+lsblk
+dmesg | grep -i nvme
 ```
-Required guest tools:
-|Tool|Purpose|
-|----------|-----------------|
-| `nvme-cli`   | Inspect NVMe namespace and controller information    |
-| `fio`        | Generate storage workloads                           |
-| `python3`    | Run detection or validation scripts                  |
-| `e2fsprogs`  | Create and check ext4 filesystems                    |
-| `util-linux` | Provides tools such as `lsblk`, `mount`, and `fdisk` |
+The expected NVMe test device is: `/dev/nvme0n1`
 
 **Download the Detection Tools inside Alpine**
 
 Option 1: clone the full repository:
 ```bash
-git clone https://github.com/YOUR_NAME/nvme-malicious-qemu.git
+git clone https://github.com/hsiaoyin-peng/nvme-malicious-qemu.git
 cd nvme-malicious-qemu/guest-tools
 chmod +x auto_detection.sh
 ```
@@ -158,19 +164,11 @@ Option 2: download only the guest tools:
 mkdir -p ~/nvme-tools
 cd ~/nvme-tools
 
-wget https://raw.githubusercontent.com/YOUR_NAME/nvme-malicious-qemu/main/guest-tools/nvme_attack_detector.py
-wget https://raw.githubusercontent.com/YOUR_NAME/nvme-malicious-qemu/main/guest-tools/auto_detection.sh
+wget https://raw.githubusercontent.com/hsiaoyin-peng/nvme-malicious-qemu/main/guest-tools/nvme_attack_detector.py
+wget https://raw.githubusercontent.com/hsiaoyin-peng/nvme-malicious-qemu/main/guest-tools/auto_detection.sh
 
 chmod +x auto_detection.sh
 ```
-
-Check the NVMe Test Device
-```bash
-nvme list
-lsblk
-dmesg | grep -i nvme
-```
-The expected NVMe test device is: `/dev/nvme0n1`
 
 Run Fake Capacity Detection
 ```bash
