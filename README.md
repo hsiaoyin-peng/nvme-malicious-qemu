@@ -31,17 +31,27 @@ Host environment:
 
 ```text
 nvme-malicious-qemu/
+├── README.md
 ├── patches/
 │   └── exp_all.diff
 ├── scripts/
 │   ├── install_qemu.sh
 │   ├── prepare_alpine.sh
 │   ├── run_alpine_install.sh   # Use ISO to boot in the first time and install Alpine to alpine.qcow2
-|   ├── run_alpine_disk.sh      # After installing Alpine to alpine.qcow2, use alpine.qcow2 to boot
+│   ├── run_alpine_disk.sh      # After installing Alpine to alpine.qcow2, use alpine.qcow2 to boot
 │   └── guest_setup.sh
+├── guest-tools/
+│   ├── nvme_attack_detector.py
+│   ├── auto_detection.sh
+│   └── README.md
 ├── images/
+│   └── README.md
 ├── docs/
+│   ├── experiment-1-fake-capacity.md
+│   └── experiment-2-prp-shift.md
 └── results/
+    ├── exp1/
+    └── exp2/
 ```
 ## Install patched QEMU
 
