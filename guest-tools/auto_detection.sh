@@ -1,22 +1,35 @@
-#!/usr/bin/env sh
+et -euo pipefail
 
-# variable
-run_times=100
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+run_times="${RUN_TIMES:-100}"
 max_time=0
 min_time=999999
 total_time=0
-report_capacity=2
-capacity_probs=8
+
+report_capacity="${REPORT_CAPACITY_GB:-2}"
+capacity_probes="${CAPACITY_PROBES:-8}"
+target_dev="${TARGET_DEV:-/dev/nvme0n1}"
 
 count_cap_not_detect=0
 count_cap_suspicious=0
 
 echo "========= Fake Capacity Detection Start ========="
+echo "Target Device: $target_dev"
 echo "Report Capacity: $report_capacity GiB"
-echo "Capacity Probs: $capacity_probs times"
-for i in $(seq $run_times)
+echo "Capacity Probes: $capacity_probes times"
+echo "Run Times: $run_times"
+echo "================================================"
+
+for i in $(seq "$run_times")
 do
-    result=$(python3 nvme_attack_detector.py --dev /dev/nvme0n1 --test capacity --reported-size-gb $report_capacity --capacity-probes $capacity_probs --yes)
+    result=$(python3 "$SCRIPT_DIR/nvme_attack_detector.py" \
+        --dev "$target_dev" \
+        --test capacity \
+        --reported-size-gb "$report_capacity" \
+        --capacity-probes "$capacity_probes" \
+        --yes)
+
     detection_time=$(echo "$result" | grep -oE 'Elapsed: [0-9]+\.[0-9]+s' | grep -oE '[0-9.]+')
     status=$(echo "$result" | grep "Fake capacity/high-LBA integrity:" | tail -n 1 | cut -d ':' -f 2 | xargs)
 
@@ -28,12 +41,10 @@ do
         count_cap_suspicious=$((count_cap_suspicious + 1))
     fi
 
-    # Find the max. time
     if [[ "$(echo "$detection_time > $max_time" | bc -l)" -eq 1 ]]; then
         max_time=$detection_time
     fi
 
-    # Find the min. time
     if [[ "$(echo "$detection_time < $min_time" | bc -l)" -eq 1 ]]; then
         min_time=$detection_time
     fi
