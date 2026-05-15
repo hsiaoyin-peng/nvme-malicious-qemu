@@ -116,16 +116,25 @@ The guest should contain two main block devices:
 /dev/vda       Alpine system disk
 /dev/nvme0n1   NVMe test device
 ```
-**Start the Alpine VM**
+## Guest-side Detection Tools
 
-After Alpine boots, login as root and run:
+This repository also includes guest-side detection scripts under:
+
+```text
+guest-tools/
+├── nvme_attack_detector.py
+└── auto_detection.sh
+```
+These scripts should be executed inside the Alpine Linux guest VM.
+
+**Install Guest Dependencies**
+
+Inside Alpine:
 ```bash
 apk update
-apk add --no-cache python3 py3-pip fio nvme-cli e2fsprogs util-linux bash coreutils
-```
-Or copy and run:
-```bash
-sh scripts/guest_setup.sh
+apk add --no-cache \
+  bash python3 py3-pip fio nvme-cli e2fsprogs util-linux \
+  coreutils grep sed gawk bc git wget curl pciutils
 ```
 Required guest tools:
 |Tool|Purpose|
@@ -136,27 +145,69 @@ Required guest tools:
 | `e2fsprogs`  | Create and check ext4 filesystems                    |
 | `util-linux` | Provides tools such as `lsblk`, `mount`, and `fdisk` |
 
-## Basic Test Commands
-Inside the Alpine guest:
+**Download the Detection Tools inside Alpine**
+
+Option 1: clone the full repository:
+```bash
+git clone https://github.com/YOUR_NAME/nvme-malicious-qemu.git
+cd nvme-malicious-qemu/guest-tools
+chmod +x auto_detection.sh
+```
+Option 2: download only the guest tools:
+```bash
+mkdir -p ~/nvme-tools
+cd ~/nvme-tools
+
+wget https://raw.githubusercontent.com/YOUR_NAME/nvme-malicious-qemu/main/guest-tools/nvme_attack_detector.py
+wget https://raw.githubusercontent.com/YOUR_NAME/nvme-malicious-qemu/main/guest-tools/auto_detection.sh
+
+chmod +x auto_detection.sh
+```
+
+Check the NVMe Test Device
 ```bash
 nvme list
-nvme id-ns /dev/nvme0n1
+lsblk
 dmesg | grep -i nvme
 ```
-Create an ext4 filesystem:
+The expected NVMe test device is: `/dev/nvme0n1`
+
+Run Fake Capacity Detection
 ```bash
-mkfs.ext4 /dev/nvme0n1
-mkdir -p /mnt/nvme
-mount /dev/nvme0n1 /mnt/nvme
+python3 nvme_attack_detector.py \
+  --dev /dev/nvme0n1 \
+  --test capacity \
+  --reported-size-gb 8 \
+  --capacity-probes 32 \
+  --yes
 ```
-Run a basic fio test:
+Run PRP/Data Corruption Detection
 ```bash
-fio --name=nvme-test \
-    --filename=/dev/nvme0n1 \
-    --rw=write \
-    --bs=4k \
-    --size=512M \
-    --direct=1
+python3 nvme_attack_detector.py \
+  --dev /dev/nvme0n1 \
+  --test prp \
+  --prp-lba 8192 \
+  --prp-io-size 8192 \
+  --yes
+```
+Run All Detection Tests
+```bash
+python3 nvme_attack_detector.py \
+  --dev /dev/nvme0n1 \
+  --test all \
+  --reported-size-gb 8 \
+  --capacity-probes 32 \
+  --prp-lba 8192 \
+  --prp-io-size 8192 \
+  --yes
+```
+Run Automated Repeated Detection
+```bash
+./auto_detection.sh
+```
+Custom configuration:
+```bash
+RUN_TIMES=100 REPORT_CAPACITY_GB=8 CAPACITY_PROBES=32 ./auto_detection.sh
 ```
 ## Notes
 This project is intended for controlled security research and educational experiments. The modified QEMU binary should only be used in an isolated VM environment.
