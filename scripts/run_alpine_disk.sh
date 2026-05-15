@@ -37,5 +37,6 @@ echo "[INFO] NVMe image: $NVME_IMG"
   -device virtio-blk-device,drive=hd0,bootindex=1 \
   -drive file="$NVME_IMG",if=none,id=nvm0,format=raw \
   -device nvme,id=nvme0,serial=testnvme \
-  -device nvme-ns,drive=nvm0,bus=nvme0,nsid=1 \
-  -nic user,model=virtio-net-pci
+  -nic user,model=virtio-net-pci \
+  -device nvme-ns,drive=nvm0,bus=nvme0,nsid=1,\
+fake-size-enable=on,fake-nsze=16777216,fake-ncap=16777216,fake-nuse=0
