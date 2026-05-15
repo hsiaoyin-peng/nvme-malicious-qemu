@@ -32,8 +32,7 @@ Host environment:
 ```text
 nvme-malicious-qemu/
 ├── patches/
-│   ├── exp1_fake_capacity_FS.diff
-│   └── exp2_prp_write.diff
+│   └── exp_all.diff
 ├── scripts/
 │   ├── install_qemu.sh
 │   ├── prepare_alpine.sh
