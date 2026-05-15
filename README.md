@@ -37,7 +37,8 @@ nvme-malicious-qemu/
 ├── scripts/
 │   ├── install_qemu.sh
 │   ├── prepare_alpine.sh
-│   ├── run_alpine.sh
+│   ├── run_alpine_install.sh   # Use ISO to boot in the first time and install Alpine to alpine.qcow2
+|   ├── run_alpine_disk.sh      # After installing Alpine to alpine.qcow2, use alpine.qcow2 to boot
 │   └── guest_setup.sh
 ├── images/
 ├── docs/
@@ -60,8 +61,8 @@ The patched QEMU binary will be located at:
 ```bash
 ~/qemu-nvme-malicious/build/qemu-system-aarch64
 ```
-## Prepare Alpine environment
-**Prepare Alpine Linux and disk images**
+## Alpine environment
+### Prepare Alpine Linux and disk images
 ```bash
 chmod +x scripts/prepare_alpine.sh
 ./scripts/prepare_alpine.sh
@@ -72,7 +73,42 @@ images/alpine.qcow2
 images/nvme.img
 ```
 Boot VM and install guest tools
+
+### Booting Alpine Linux
+This project provides two QEMU boot scripts.
+
+**First boot: install Alpine from ISO**
+
+Use this script only for the first boot. It boots from the Alpine ISO and installs Alpine Linux into `images/alpine.qcow2`.
+```bash
+./scripts/run_alpine_install.sh
+```
+Inside Alpine, login as root and run:
+```bash
+setup-alpine
+```
+When asked for the installation disk, select:
+```bash
+vda
+```
+Use `sys` mode to install Alpine to the virtual disk.
+After installation finishes, shut down the VM:
+```bash
+poweroff
+```
+**Normal boot: boot from installed disk**
+
+After Alpine has been installed into images/alpine.qcow2, use:
+```bash
+./scripts/run_alpine_disk.sh
+```
+The guest should contain two main block devices:
+```bash
+/dev/vda       Alpine system disk
+/dev/nvme0n1   NVMe test device
+```
 **Start the Alpine VM**
+
 After Alpine boots, login as root and run:
 ```bash
 apk update
