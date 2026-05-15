@@ -169,43 +169,9 @@ wget https://raw.githubusercontent.com/hsiaoyin-peng/nvme-malicious-qemu/main/gu
 
 chmod +x auto_detection.sh
 ```
+**Usage**
 
-Run Fake Capacity Detection
-```bash
-python3 nvme_attack_detector.py \
-  --dev /dev/nvme0n1 \
-  --test capacity \
-  --reported-size-gb 8 \
-  --capacity-probes 32 \
-  --yes
-```
-Run PRP/Data Corruption Detection
-```bash
-python3 nvme_attack_detector.py \
-  --dev /dev/nvme0n1 \
-  --test prp \
-  --prp-lba 8192 \
-  --prp-io-size 8192 \
-  --yes
-```
-Run All Detection Tests
-```bash
-python3 nvme_attack_detector.py \
-  --dev /dev/nvme0n1 \
-  --test all \
-  --reported-size-gb 8 \
-  --capacity-probes 32 \
-  --prp-lba 8192 \
-  --prp-io-size 8192 \
-  --yes
-```
-Run Automated Repeated Detection
-```bash
-./auto_detection.sh
-```
-Custom configuration:
-```bash
-RUN_TIMES=100 REPORT_CAPACITY_GB=8 CAPACITY_PROBES=32 ./auto_detection.sh
-```
+Ref: Go to guest-tools/README.md
+
 ## Notes
 This project is intended for controlled security research and educational experiments. The modified QEMU binary should only be used in an isolated VM environment.
