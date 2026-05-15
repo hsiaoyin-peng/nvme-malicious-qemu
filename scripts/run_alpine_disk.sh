@@ -52,7 +52,8 @@ echo "[INFO] NVMe image:  $NVME_IMG"
   -drive file="$ALPINE_ISO",if=none,id=cdrom0,media=cdrom,readonly=on \
   -device scsi-cd,drive=cdrom0,bus=scsi0.0,bootindex=1 \
   -drive file="$SYSTEM_DISK",if=none,id=hd0,format=qcow2 \
-  -device virtio-blk-device,drive=hd0,bootindex=2 \
+  -device virtio-blk-device,drive=hd0 \
   -drive file="$NVME_IMG",if=none,id=nvm0,format=raw \
   -device nvme,id=nvme0,serial=testnvme \
-  -device nvme-ns,drive=nvm0,bus=nvme0,nsid=1
+  -device nvme-ns,drive=nvm0,bus=nvme0,nsid=1 \
+  -nic user,model=virtio-net-pci
