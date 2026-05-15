@@ -13,13 +13,15 @@ These scripts are intended to run inside the Alpine Linux guest VM.
 
 ### Arguments
 
-|Arguments|Type|Value|Description|
-|`--dev`|string|/dev/nvme0n1|Indicate the testing nvme device|
-|`--test`|string|capacity or prp or all|The testing case|
-|`reported-size-gb`|int|2or 8 or 16...|For capacity test: the device capacity|
-|`capacity-probes`|int|32|Fro capacity test: the number of probe data|
-|`prp-lba`|int|200000|For PRP test: the SLBA of this testing|
-|`prp-io-size`|int|8192||For PRP test: the data size|
+| Arguments | Type | Value | Description |
+|---|---|---|---|
+| `--dev` | string | /dev/nvme0n1 | Indicate the testing nvme device |
+| `--test` | string|capacity or prp or all| The testing case|
+| `reported-size-gb` | int | 2 or 8 or 16...| For capacity test: the device capacity |
+| `capacity-probes` | int | 32 | Fro capacity test: the number of probe data |
+| `prp-lba` | int | 200000 | For PRP test: the SLBA of this testing |
+| `prp-io-size` | int | 8192 | For PRP test: the data size |
+
 Run Fake Capacity Detection:
 ```bash
 python3 nvme_attack_detector.py \
